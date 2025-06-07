@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 
 class CaffeineAnalyzer:
-    def __init__(self, data_path="data/Nathaniel/"):
+    def __init__(self, data_path="../data/Nathaniel/"):
         self.data_path = data_path
         self.no_caffeine_data = None
         self.caffeine_data = None
@@ -43,22 +43,15 @@ class CaffeineAnalyzer:
                     try:
                         with zip_ref.open(file_name) as file:
                             content = file.read().decode('utf-8')
-                            
                             # Try to parse as CSV first
                             try:
                                 df = pd.read_csv(pd.io.common.StringIO(content))
                                 data_dict[file_name] = df
                                 print(f"    Loaded {file_name} as CSV: shape {df.shape}")
                             except:
-                                # If CSV fails, try JSON
-                                try:
-                                    json_data = json.loads(content)
-                                    data_dict[file_name] = json_data
-                                    print(f"    Loaded {file_name} as JSON")
-                                except:
-                                    # Store as raw text
-                                    data_dict[file_name] = content
-                                    print(f"    Loaded {file_name} as raw text")
+                                # Store as raw text
+                                data_dict[file_name] = content
+                                print(f"    Loaded {file_name} as raw text")
                     except Exception as e:
                         print(f"    Error loading {file_name}: {e}")
         
@@ -296,26 +289,16 @@ def main():
     """Main analysis function"""
     print("Caffeine Tremor Analysis")
     print("="*30)
-    
-    # Initialize analyzer
+
     analyzer = CaffeineAnalyzer()
-    
-    # Load data
     print("Loading data...")
     analyzer.extract_and_load_data()
-    
-    # Explore structure
     analyzer.explore_data_structure()
-    
-    # Compare conditions
     results = analyzer.compare_conditions()
-    
-    # Visualize results
     if results:
         print(f"\nFound {len(results)} sensor files to compare")
         df_metrics = analyzer.visualize_results(results)
         
-        # Summary conclusion
         print("\n" + "="*50)
         print("CONCLUSION")
         print("="*50)

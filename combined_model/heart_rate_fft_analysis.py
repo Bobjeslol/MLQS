@@ -10,7 +10,7 @@ import os
 from pathlib import Path
 
 class HeartRateFFTAnalyzer:
-    def __init__(self, data_path="data/Nathaniel/"):
+    def __init__(self, data_path="../data/Nathaniel/"):
         self.data_path = data_path
         self.datasets = {}
         
@@ -45,78 +45,25 @@ class HeartRateFFTAnalyzer:
         
         return data_dict
     
-    def explore_data_structure(self, condition="no_caffeine"):
-        """Explore the structure of sensor data to understand timestamps"""
-        print(f"\n=== DATA STRUCTURE EXPLORATION ({condition}) ===")
-        
-        dataset = self.datasets[condition]
-        
-        for sensor_name, df in dataset.items():
-            if sensor_name in ['WatchAccelerometer', 'WatchGyroscope', 'WatchTotalAcceleration', 'HeartRate']:
-                print(f"\n{sensor_name}:")
-                print(f"  Shape: {df.shape}")
-                print(f"  Columns: {list(df.columns)}")
-                print(f"  Data types:\n{df.dtypes}")
-                print(f"  First 3 rows:")
-                print(df.head(3))
-                
-                # Look for time-related columns
-                time_cols = [col for col in df.columns if any(word in col.lower() 
-                            for word in ['time', 'timestamp', 'millis', 'nano', 'epoch'])]
-                if time_cols:
-                    print(f"  Time columns found: {time_cols}")
-                    for time_col in time_cols:
-                        print(f"    {time_col} sample values: {df[time_col].head(3).tolist()}")
-                        print(f"    {time_col} range: {df[time_col].min()} to {df[time_col].max()}")
-    
     def estimate_sampling_rate_improved(self, df):
-        """Improved sampling rate estimation with multiple methods"""
-        # Method 1: Look for explicit time columns
-        time_cols = [col for col in df.columns if any(word in col.lower() 
-                    for word in ['time', 'timestamp', 'millis', 'nano', 'epoch'])]
+        """Uses time-series data to estimate the sample rate"""
+        time_cols = [col for col in df.columns if col == 'time']
         
         for time_col in time_cols:
-            try:
-                times = pd.to_numeric(df[time_col], errors='coerce').dropna()
-                if len(times) > 1:
-                    time_diffs = np.diff(times)
-                    time_diffs = time_diffs[time_diffs > 0]  # Remove zero differences
+            times = pd.to_numeric(df[time_col], errors='coerce').dropna()
+            if len(times) > 1:
+                time_diffs = np.diff(times)
+                time_diffs = time_diffs[time_diffs > 0]  # Remove zero differences
+                
+                if len(time_diffs) > 0:
+                    median_interval = np.median(time_diffs)
                     
-                    if len(time_diffs) > 0:
-                        median_interval = np.median(time_diffs)
-                        
-                        # Determine if milliseconds, microseconds, nanoseconds, or seconds
-                        if median_interval > 1e6:  # Nanoseconds
-                            sampling_rate = 1e9 / median_interval
-                            print(f"  Detected nanosecond timestamps, sampling rate: {sampling_rate:.2f} Hz")
-                        elif median_interval > 1000:  # Milliseconds or microseconds
-                            sampling_rate = 1000.0 / median_interval
-                            print(f"  Detected millisecond timestamps, sampling rate: {sampling_rate:.2f} Hz")
-                        elif median_interval > 1:  # Large numbers, likely milliseconds
-                            sampling_rate = 1000.0 / median_interval
-                            print(f"  Assuming millisecond timestamps, sampling rate: {sampling_rate:.2f} Hz")
-                        else:  # Seconds
-                            sampling_rate = 1.0 / median_interval
-                            print(f"  Detected second timestamps, sampling rate: {sampling_rate:.2f} Hz")
-                        
-                        if 1 <= sampling_rate <= 1000:  # Reasonable range
-                            return sampling_rate
-            except:
-                continue
-        
-        # Method 2: Estimate from data length and typical measurement duration (30 seconds)
-        n_samples = len(df)
-        estimated_duration = 30.0  # seconds
-        estimated_rate = n_samples / estimated_duration
-        print(f"  Fallback estimate: {n_samples} samples / {estimated_duration}s = {estimated_rate:.2f} Hz")
-        
-        if 10 <= estimated_rate <= 200:  # Reasonable for smartwatch
-            return estimated_rate
-        
-        # Method 3: Common smartwatch sampling rates
-        common_rates = [50, 100, 25, 20]
-        print(f"  Using common rate assumption: 50 Hz")
-        return 50.0
+                    sampling_rate = 1e9 / median_interval # Timestamps are in nanoseconds
+                    print(f"  Detected nanosecond timestamps, sampling rate: {sampling_rate:.2f} Hz")
+                    
+                    if 1 <= sampling_rate <= 1000:  # Reasonable range
+                        print(f"Observed sampling rate: {sampling_rate}")
+                        return sampling_rate
     
     def extract_heart_rate_from_motion(self, motion_data, sampling_rate, hr_range=(0.8, 3.5)):
         """
@@ -129,8 +76,7 @@ class HeartRateFFTAnalyzer:
         
         # Get numeric columns (motion sensors)
         numeric_cols = motion_data.select_dtypes(include=[np.number]).columns
-        time_cols = [col for col in motion_data.columns if any(word in col.lower() 
-                    for word in ['time', 'timestamp', 'millis', 'nano', 'epoch'])]
+        time_cols = [col for col in motion_data.columns if col == 'time']
         
         # Exclude time columns from analysis
         sensor_cols = [col for col in numeric_cols if col not in time_cols]
@@ -138,7 +84,7 @@ class HeartRateFFTAnalyzer:
         print(f"  Analyzing columns: {sensor_cols}")
         
         for col in sensor_cols:
-            signal_data = motion_data[col].dropna().values
+            signal_data = motion_data[col].dropna().values # Dropping missing values for now, imputation might be better?
             
             if len(signal_data) < 100:  # Need sufficient data points
                 print(f"    {col}: Insufficient data ({len(signal_data)} points)")
@@ -191,7 +137,7 @@ class HeartRateFFTAnalyzer:
                         # If half the rate is reasonable and original is high, use half
                         corrected_bpm = peak_bpm_half
                         correction_applied = True
-                        print(f"      Applied halving correction: {peak_bpm:.1f} → {corrected_bpm:.1f} BPM")
+                        print(f"Applied halving correction: {peak_bpm:.1f} → {corrected_bpm:.1f} BPM")
                     else:
                         # Keep original estimate
                         corrected_bpm = peak_bpm
@@ -219,10 +165,10 @@ class HeartRateFFTAnalyzer:
                         'filtered_signal': filtered_signal
                     }
                     
-                    print(f"    {col}: {corrected_bpm:.1f} BPM (original: {peak_bpm:.1f}, confidence: {peak_ratio:.3f}, peaks: {n_significant_peaks})")
+                    print(f"{col}: {corrected_bpm:.1f} BPM (original: {peak_bpm:.1f}, confidence: {peak_ratio:.3f}, peaks: {n_significant_peaks})")
                 
             except Exception as e:
-                print(f"    {col}: Processing error - {e}")
+                print(f"{col}: Processing error - {e}")
                 continue
         
         return results
@@ -393,7 +339,7 @@ class HeartRateFFTAnalyzer:
                     ax.set_title(f'{sensor_name}\n{axis}', fontsize=10)
                     ax.legend(fontsize=8)
                     ax.grid(True, alpha=0.3)
-                    ax.set_xlim(40, 120)  # Focus on reasonable HR range
+                    ax.set_xlim(40, 120)  # Reasonable HR range
                 
                 plot_idx += 1
         
@@ -413,17 +359,10 @@ def main():
     """Main analysis function"""
     print("Heart Rate Extraction from Tremor Data - Enhanced Version")
     print("="*55)
-    
-    # Initialize analyzer
+
     analyzer = HeartRateFFTAnalyzer()
-    
-    # Load data
     print("Loading sensor data...")
     analyzer.load_all_data()
-    
-    # Explore data structure first
-    analyzer.explore_data_structure("no_caffeine")
-    analyzer.explore_data_structure("caffeine")
     
     # Analyze and visualize
     print("\n" + "="*55)
@@ -450,7 +389,7 @@ def main():
                         before_bpm = no_caff_hr[axis].get('corrected_bpm', no_caff_hr[axis]['estimated_bpm'])
                         after_bpm = caff_hr[axis].get('corrected_bpm', caff_hr[axis]['estimated_bpm'])
                         
-                        # Also show original values for comparison
+                        # Compare to original values
                         before_orig = no_caff_hr[axis]['estimated_bpm']
                         after_orig = caff_hr[axis]['estimated_bpm']
                         
