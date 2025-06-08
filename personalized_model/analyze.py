@@ -76,7 +76,7 @@ class CaffeineAnalyzer:
                                 
                                 # Convert all columns to numeric where possible
                                 for col in df.columns:
-                                    df[col] = pd.to_numeric(df[col], errors='ignore')
+                                    df[col] = pd.to_numeric(df[col])
                                 
                                 # Remove any completely empty rows
                                 df = df.dropna(how='all')
