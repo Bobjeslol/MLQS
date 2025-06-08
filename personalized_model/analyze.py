@@ -10,24 +10,23 @@ import json
 from pathlib import Path
 
 class CaffeineAnalyzer:
-    def __init__(self, data_path="../data/Timo/"):
+    def __init__(self, data_path="../data/Timo/", zip_files=None):
         self.data_path = data_path
+        # zip_files: dict mapping session_name -> zip filename
+        self.zip_files = zip_files or {
+            'base_2025-06-06': 'base 2025-06-06 15-45-11.zip',
+            'base_2025-06-07': 'base 2025-06-07 12-17-44.zip', 
+            '200ml_2025-06-07': '200 ml 2025-06-07 12-52-34.zip',
+            '230ml_2025-06-06': '230ml 2025-06-06 16-22-45.zip'
+        }
         self.baseline_data = {}
         self.caffeine_data = {}
         self.all_data = {}
 
     def extract_and_load_data(self):
         """Extract zip files and load sensor data"""
-        # Define the zip files based on your naming convention
-        zip_files = {
-            'base_2025-06-06': 'base 2025-06-06 15-45-11.zip',
-            'base_2025-06-07': 'base 2025-06-07 12-17-44.zip', 
-            '200ml_2025-06-07': '200 ml 2025-06-07 12-52-34.zip',
-            '230ml_2025-06-06': '230ml 2025-06-06 16-22-45.zip'
-        }
-
-        # Load all data files
-        for session_name, zip_filename in zip_files.items():
+        # Use self.zip_files for session/zip mapping
+        for session_name, zip_filename in self.zip_files.items():
             zip_path = os.path.join(self.data_path, zip_filename)
             if os.path.exists(zip_path):
                 print(f"\nLoading {session_name} from {zip_filename}")
