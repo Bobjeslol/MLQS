@@ -1,0 +1,69 @@
+{
+  "summary": {
+    "mean_reduction_percent": 25.363805522056666,
+    "median_reduction_percent": 28.016205527941462,
+    "std_reduction_percent": 15.823994620746976
+  },
+  "detailed_results": [
+    {
+      "file": "base 2025-06-07 12-17-44.zip_Accelerometer.csv",
+      "delta_percent": 54.74629972114885,
+      "sensor_type": "Accelerometer"
+    },
+    {
+      "file": "base 2025-06-07 12-17-44.zip_Gyroscope.csv",
+      "delta_percent": 42.07195411223195,
+      "sensor_type": "Gyroscope"
+    },
+    {
+      "file": "base 2025-06-07 12-17-44.zip_Linear Acceleration.csv",
+      "delta_percent": 29.47756986704807,
+      "sensor_type": "Linear Acceleration"
+    },
+    {
+      "file": "200 ml 2025-06-07 12-52-34.zip_Accelerometer.csv",
+      "delta_percent": 38.11290604160464,
+      "sensor_type": "Accelerometer"
+    },
+    {
+      "file": "200 ml 2025-06-07 12-52-34.zip_Gyroscope.csv",
+      "delta_percent": 26.554841188834853,
+      "sensor_type": "Gyroscope"
+    },
+    {
+      "file": "200 ml 2025-06-07 12-52-34.zip_Linear Acceleration.csv",
+      "delta_percent": 10.90484254423514,
+      "sensor_type": "Linear Acceleration"
+    },
+    {
+      "file": "230ml 2025-06-06 16-22-45.zip_Accelerometer.csv",
+      "delta_percent": 38.630065249061545,
+      "sensor_type": "Accelerometer"
+    },
+    {
+      "file": "230ml 2025-06-06 16-22-45.zip_Gyroscope.csv",
+      "delta_percent": 17.373058894019913,
+      "sensor_type": "Gyroscope"
+    },
+    {
+      "file": "230ml 2025-06-06 16-22-45.zip_Linear Acceleration.csv",
+      "delta_percent": 8.45426378780131,
+      "sensor_type": "Linear Acceleration"
+    },
+    {
+      "file": "base 2025-06-06 15-45-11.zip_Accelerometer.csv",
+      "delta_percent": 30.187426166134212,
+      "sensor_type": "Accelerometer"
+    },
+    {
+      "file": "base 2025-06-06 15-45-11.zip_Gyroscope.csv",
+      "delta_percent": 5.369111967860888,
+      "sensor_type": "Gyroscope"
+    },
+    {
+      "file": "base 2025-06-06 15-45-11.zip_Linear Acceleration.csv",
+      "delta_percent": 2.483326724698609,
+      "sensor_type": "Linear Acceleration"
+    }
+  ]
+}
