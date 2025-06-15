@@ -21,22 +21,25 @@ class FeatureExtractor:
             Path to the Parquet file containing the raw sensor data.
         sensor_aggs : dict, optional
             Mapping of sensor column names to a list of aggregation functions or names.
-            e.g. {
-                'accelerometer_x': ['mean', 'max', 'std', p90],
-                'gyroscope_y': ['mean', 'max', 'std'],
-                'linear_acceleration_z': ['mean', 'max']
-            }
-            If None, defaults to accelerometer axes with mean, max, std, p90.
+            If None, defaults to accelerometer, gyroscope, and linear acceleration axes
+            with mean, max, std, and p90.
         """
         self.file_path = file_path
         self.df = pd.read_parquet(file_path)
 
-        # Default sensor aggregations
+        # Default sensor aggregations covering all three sensor types
         if sensor_aggs is None:
+            aggs = ['mean', 'max', 'std']
             self.sensor_aggs = {
-                'accelerometer_x': ['mean', 'max', 'std'],
-                'accelerometer_y': ['mean', 'max', 'std'],
-                'accelerometer_z': ['mean', 'max', 'std']
+                'accelerometer_x': aggs,
+                'accelerometer_y': aggs,
+                'accelerometer_z': aggs,
+                'gyroscope_x':    aggs,
+                'gyroscope_y':    aggs,
+                'gyroscope_z':    aggs,
+                'linear_acceleration_x': aggs,
+                'linear_acceleration_y': aggs,
+                'linear_acceleration_z': aggs
             }
         else:
             self.sensor_aggs = sensor_aggs
@@ -54,27 +57,14 @@ class FeatureExtractor:
         Bin and aggregate the sensor data into fixed time intervals,
         optionally filtering by metadata.
 
-        Parameters:
-        -----------
-        bin_size : float
-            Width of each time bin in seconds (e.g., 0.025 for 25 ms).
-        experiment_id, base, caffeine_ml, source : optional
-            Filter values for each metadata column. If provided, only rows
-            matching the value are retained.
-        save : bool
-            Whether to save the resulting DataFrame to disk.
-        save_path : str, optional
-            File path to save the binned DataFrame. If None and save=True,
-            defaults to 'grouped_bin_{bin_size*1000:.0f}ms.parquet'.
-
         Returns:
         --------
         pd.DataFrame
             A DataFrame grouped by ['experiment_id', 'base', 'caffeine_ml', 'source', 't_bin']
             with aggregated columns for every sensor defined in sensor_aggs.
         """
-        # Copy and optionally filter metadata
         df = self.df.copy()
+        # apply any filters provided
         if experiment_id is not None:
             df = df[df['experiment_id'] == experiment_id]
         if base is not None:
@@ -84,27 +74,24 @@ class FeatureExtractor:
         if source is not None:
             df = df[df['source'] == source]
 
-        # Create the time-bin column
+        # compute time bins
         df['t_bin'] = np.ceil(df['time'] / bin_size) * bin_size
 
-        # Use all sensors specified in sensor_aggs
-        agg_funcs = {col: funcs for col, funcs in self.sensor_aggs.items()}
-
-        # Group and aggregate
+        # group and aggregate based on sensor_aggs
         grouped = (
             df
             .groupby(['experiment_id', 'base', 'caffeine_ml', 'source', 't_bin'])
-            .agg(agg_funcs)
+            .agg(self.sensor_aggs)
             .reset_index()
         )
 
-        # Flatten MultiIndex columns
+        # flatten MultiIndex columns
         grouped.columns = [
             f"{col[0]}_{col[1] if isinstance(col, tuple) else ''}".rstrip('_')
             for col in grouped.columns
         ]
 
-        # Save if requested
+        # save if requested
         if save:
             if save_path is None:
                 ms = int(bin_size * 1000)
