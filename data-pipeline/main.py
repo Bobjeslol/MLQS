@@ -10,7 +10,7 @@ import re
 
 from remove_outliers import process_zip_file_outliers
 from trim import process_zip_file
-
+from FeatureExtractor import *
 
 def trim():
     # Setup paths
@@ -257,12 +257,105 @@ def combine():
     else:
         print("No data available to write master files.")
 
+
+def flatten(bin_size=0.025):
+    df = pd.read_parquet('./data_cleaned/parquet_outputs/Timo/output-all.parquet')
+    featureExtractor = FeatureExtractor('./data_cleaned/parquet_outputs/Timo/output-all.parquet')
+    grouped_df = featureExtractor.bin_data(bin_size=bin_size, save=True, save_path='grouped_25ms.parquet', caffeine_ml=0)
+
+
+def load_experiment_metadata(excel_path):
+    """
+    Load and clean experiment metadata from Excel file
+    """
+    # Read Excel file
+    df = pd.read_excel(excel_path)
+    df.columns = df.columns.str.strip()
+    
+    # Standardize column names
+    column_mapping = {
+        'day (mm/dd)': 'date',
+        'base (y/n)': 'base',
+        'sleep (1 = bad, 2 = decent, 3 = good)': 'sleep_quality',
+        'exercise (y/n)': 'exercise',
+        'eaten (y/n)': 'eaten',
+        'mls (int)': 'caffeine_ml_meta',
+        'mgs (int)': 'caffeine_mg',
+        'mg/kg': 'caffeine_mg_per_kg',
+        'time': 'consumption_time',
+        'regular_coffee?': 'regular_coffee',
+        'classification': 'caffeine_classification'
+    }
+    
+    # Rename columns
+    df = df.rename(columns=column_mapping)
+    
+    # Convert date column to string format YYYY-MM-DD
+    if 'date' in df.columns:
+        df['date'] = pd.to_datetime(df['date']).dt.strftime('%Y-%m-%d')
+    
+    # Convert binary y/n columns to 1/0
+    binary_cols = ['exercise', 'eaten']
+    for col in binary_cols:
+        if col in df.columns:
+            df[col] = df[col].map({'y': 1, 'n': 0}).fillna(df[col])
+
+    return df
+
+
+def add_form_fields(binned_parquet_path='grouped_25ms.parquet', metadata_excel_path='Form datapoints.xlsx'):
+    """
+    Add form field data to parquet data set
+    """
+    # Load data
+    print(f"Loading binned data from: {binned_parquet_path}")
+    binned_df = pd.read_parquet(binned_parquet_path)
+    metadata_df = load_experiment_metadata(metadata_excel_path)
+    
+    # Create merge keys
+    binned_df['merge_key'] = binned_df['experiment_id'].astype(str) + '_' + binned_df['base'].astype(str)
+    metadata_df['merge_key'] = metadata_df['date'].astype(str) + '_' + metadata_df['base'].astype(str)
+    
+    # Perform merge
+    enriched_df = pd.merge(
+        binned_df, 
+        metadata_df, 
+        on='merge_key', 
+        how='left',
+        suffixes=('', '_meta')
+    )
+    
+    # Clean up columns
+    columns_to_drop = ['merge_key', 'date', 'base_meta']
+    columns_to_drop = [col for col in columns_to_drop if col in enriched_df.columns]
+    enriched_df = enriched_df.drop(columns=columns_to_drop)
+
+
+    # Save enriched data
+    output_path = binned_parquet_path.replace('.parquet', '_with_form_fields.parquet')
+    enriched_df.to_parquet(output_path, index=False, compression='snappy')
+    print(f"Saved parquet: {output_path}")
+    
+    return enriched_df
+
 if __name__ == '__main__':
     # Trim all Timo data
-    trim()
+    # trim()
     
-    # Remove all outliers from Timo data
-    outlier_analysis()
+    # # Remove all outliers from Timo data
+    # outlier_analysis()
     
-    # Combine all Timo data
-    combine()
+    # # Combine all Timo data
+    # combine()
+    
+    # 'Flatten' data into bins
+    flatten(bin_size=0.025)
+    pd.set_option('display.max_columns', None)
+    print(50*'=')
+    print(pd.read_parquet('grouped_25ms.parquet').head(10))
+    
+    # Add in form data
+    enriched_df = add_form_fields('grouped_25ms.parquet', './data/Timo/Form datapoints.xlsx')
+    print(enriched_df.head(10))
+
+    # Add more derived features TODO:
